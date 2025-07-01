@@ -1,4 +1,4 @@
-# fMRI Connectivity in Mood Circuits
+# fMRI Connectivity in Mood Regulation Circuits
 
 **A rapid, end-to-end ACC seed-based resting-state fMRI pipeline**
 
