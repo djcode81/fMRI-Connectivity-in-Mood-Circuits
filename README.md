@@ -44,7 +44,7 @@ After rigorous FDR correction and proper ROI masking, the analysis will identify
 
 ## Clinical Relevance
 
-The dACC serves as a critical hub in cognitive control and emotion regulation networks. Connectivity patterns between dACC and cortical/subcortical regions are consistently altered in treatment-resistant depression, making this circuit a primary target for TMS interventions at the Stanford Brain Stimulation Lab.
+The dACC serves as a critical hub in cognitive control and emotion regulation networks. Connectivity patterns between dACC and cortical/subcortical regions are consistently altered in treatment-resistant depression.
 
 ## Repository Structure
 
