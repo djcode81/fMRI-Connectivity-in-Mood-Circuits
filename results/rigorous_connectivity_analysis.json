@@ -1,0 +1,37 @@
+{
+  "dataset": "ds003007 - Depression resting-state connectivity",
+  "n_subjects": 29,
+  "tr": 2.5,
+  "seed_region": "Dorsal Anterior Cingulate Cortex",
+  "seed_coords": [
+    0,
+    24,
+    26
+  ],
+  "seed_radius_mm": 6,
+  "atlases": [
+    "Harvard-Oxford cortical",
+    "Harvard-Oxford subcortical"
+  ],
+  "preprocessing": {
+    "confound_regressors": [
+      "global_signal",
+      "linear_trend",
+      "quadratic_trend"
+    ],
+    "standardization": "zscore_sample",
+    "temporal_filter": {
+      "low_pass": 0.1,
+      "high_pass": 0.01
+    },
+    "detrending": true
+  },
+  "statistics": {
+    "test": "one-sample t-test vs zero",
+    "multiple_comparisons": "FDR correction (Benjamini-Hochberg)",
+    "alpha": 0.05,
+    "n_tests": 50,
+    "n_significant_uncorrected": 12,
+    "n_significant_fdr": 2
+  }
+}

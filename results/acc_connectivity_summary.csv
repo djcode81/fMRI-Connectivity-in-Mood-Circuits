@@ -1,0 +1,16 @@
+region,mean_z_score,connection_type,clinical_relevance
+Paracingulate Gyrus,0.4306396649364661,hyperconnected,"Emotion processing, conflict monitoring"
+Cuneal Cortex,-0.29428258226305753,hypoconnected,Associated with mood regulation networks
+Juxtapositional Lobule Cortex (formerly Supplementary Motor Cortex),-0.2892193927124201,hypoconnected,Associated with mood regulation networks
+"Middle Temporal Gyrus, posterior division",0.2792425494089876,hyperconnected,"Memory, emotional processing"
+"Parahippocampal Gyrus, posterior division",0.21522808103440308,hyperconnected,Associated with mood regulation networks
+Temporal Pole,-0.1950724812779102,hypoconnected,"Memory, emotional processing"
+"Temporal Fusiform Cortex, posterior division",0.19245671645181717,hyperconnected,"Memory, emotional processing"
+Frontal Opercular Cortex,0.19104007134811354,hyperconnected,"Executive control, emotion regulation"
+"Middle Temporal Gyrus, temporooccipital part",0.17814876819365,hyperconnected,"Memory, emotional processing"
+Precentral Gyrus,-0.17070794976520365,hypoconnected,Associated with mood regulation networks
+Lingual Gyrus,0.15340212717372645,hyperconnected,Associated with mood regulation networks
+"Parahippocampal Gyrus, anterior division",0.14933338305769414,hyperconnected,Associated with mood regulation networks
+"Lateral Occipital Cortex, inferior division",0.13265413600824563,hyperconnected,Associated with mood regulation networks
+"Superior Temporal Gyrus, posterior division",-0.1310519398469179,hypoconnected,"Memory, emotional processing"
+Subcallosal Cortex,0.1302464217985295,hyperconnected,Associated with mood regulation networks

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+data/raw/*
+data/derivatives/*
+!data/raw/.gitkeep
+!data/derivatives/.gitkeep

@@ -1,0 +1,25 @@
+{
+  "dataset": "ds003007 - Depression resting-state connectivity",
+  "n_subjects": 29,
+  "tr": 2.5,
+  "seed_region": "Dorsal Anterior Cingulate Cortex",
+  "seed_coords": [
+    0,
+    24,
+    26
+  ],
+  "atlas": "Harvard-Oxford cortical",
+  "preprocessing": {
+    "confound_strategy": "motion + wm_csf + global_signal",
+    "standardization": "zscore_sample",
+    "temporal_filter": {
+      "low_pass": 0.1,
+      "high_pass": 0.01
+    }
+  },
+  "statistics": {
+    "test": "one-sample t-test vs zero",
+    "alpha": 0.05,
+    "n_significant": 25
+  }
+}
