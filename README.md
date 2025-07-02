@@ -1,4 +1,4 @@
-# fMRI Connectivity in Mood Circuits
+# fMRI Connectivity in Mood Regulation Circuits
 
 **A rigorous ACC seed-based resting-state fMRI pipeline for depression research**
 
