@@ -1,90 +1,103 @@
 # fMRI Connectivity in Mood Circuits
 
-**A rapid, end-to-end ACC seed-based resting-state fMRI pipeline**
+**A rigorous ACC seed-based resting-state fMRI pipeline for depression research**
 
 ## Overview
 
-This project demonstrates an end-to-end neuroimaging analysis pipeline examining functional connectivity within mood regulation circuits. Using resting-state fMRI data, we investigate anterior cingulate cortex (ACC) connectivity patterns that have been implicated in treatment-resistant depression and obsessive-compulsive disorder.
+This project demonstrates a methodologically rigorous neuroimaging analysis pipeline examining dorsal anterior cingulate cortex (dACC) functional connectivity patterns in mild depression. The analysis employs proper statistical methods with FDR correction and directly relates to neurostimulation targeting strategies used in treatment-resistant depression research.
 
 ## Dataset
 
-- **Source**: OpenNeuro ds000030 (or similar resting-state dataset)
-- **Subjects**: sub-01, sub-02 (chosen for minimal motion <0.2 mm FD)
-- **Acquisition**: Resting-state fMRI, single session
+- **Source**: OpenNeuro ds003007 - "Brain Networks Connectivity in Mild to Moderate Depression"
+- **DOI**: https://openneuro.org/datasets/ds003007
+- **Subjects**: 29 depression patients (pre-treatment session)
+- **Acquisition**: Resting-state fMRI, TR=2.5s, 100 timepoints per subject
 
 ## Methods
 
 ### Preprocessing
-- **Tool**: fMRIPrep v23.x
-- **Output space**: MNI152NLin6Asym (2mm)
-- **Key steps**: Motion correction, spatial normalization, minimal smoothing
+- **Confound regression**: Global signal, linear trend, quadratic trend
+- **Temporal filtering**: Bandpass 0.01-0.1 Hz (applied once in clean_img)
+- **Standardization**: Z-score normalization (sample-based)
+- **Note**: Motion parameters, WM, CSF not available (raw data, not fMRIPrep derivatives)
 
 ### Connectivity Analysis
-- **Tool**: CONN Toolbox (MATLAB)
-- **Approach**: Seed-to-voxel functional connectivity
-- **Seed region**: ACC (MNI coordinates: 0, 24, 26)
-- **Analysis**: First-level connectivity maps, group-level thresholding
+- **Seed region**: Dorsal ACC (MNI: 0, 24, 26) - 6mm radius sphere
+- **Target regions**: Harvard-Oxford cortical + subcortical atlases
+- **ROI masking**: Only regions present in ALL subjects included in analysis
+- **Method**: Pearson correlation → Fisher z-transformation
 
-### Visualization
-- **Tools**: Python (nilearn, matplotlib)
-- **Outputs**: Connectivity maps, statistical plots
+### Statistical Analysis
+- **Test**: One-sample t-test vs. zero connectivity
+- **Multiple comparisons**: FDR correction (Benjamini-Hochberg)
+- **Effect size**: Cohen's d (computed after proper ROI masking)
+- **Background handling**: Background and white matter regions excluded before statistics
 
 ## Key Findings
 
-ACC showed strongest positive connectivity to dorsomedial PFC (Z = 4.1) and PCC (Z = 3.7). ![ACC Connectivity](results/acc_connectivity_thumb.png)
+After rigorous FDR correction and proper ROI masking, the analysis will identify significant ACC connectivity patterns in depression patients.
+
+![ACC Connectivity Results](results/acc_connectivity_results.png)
+
+**ACC Seed Verification:**
+![ACC Seed Mask](results/acc_seed_mask.png)
 
 ## Clinical Relevance
 
-The ACC serves as a critical hub in cognitive control and emotion regulation networks. Hyperconnectivity between ACC and subcortical regions has been consistently reported in treatment-resistant depression, making this circuit a key target for neurostimulation interventions (Philip et al., 2018).
+The dACC serves as a critical hub in cognitive control and emotion regulation networks. Connectivity patterns between dACC and cortical/subcortical regions are consistently altered in treatment-resistant depression, making this circuit a primary target for TMS interventions at the Stanford Brain Stimulation Lab.
 
 ## Repository Structure
 
 ```
-├── data/                   # Raw and preprocessed data
-├── scripts/               
-│   ├── requirements.txt   # Python dependencies
-│   ├── preprocess.sh      # fMRIPrep commands
-│   ├── connectivity.m     # CONN analysis script
-│   └── visualize.py       # Python plotting
-├── results/               # Output connectivity maps
-├── docs/
-│   └── Mini_Report.pdf    # Analysis report
+├── scripts/
+│   ├── requirements.txt                        # Python dependencies
+│   ├── depression_connectivity_analysis.py     # Main analysis with proper masking
+│   └── create_visualizations.py               # Generate plots
+├── results/
+│   ├── acc_connectivity_rigorous_results.csv  # Full statistical results
+│   ├── acc_connectivity_significant_fdr.csv   # FDR-significant regions only
+│   ├── participants_used.tsv                  # List of 29 subjects analyzed
+│   ├── rigorous_connectivity_analysis.json    # Analysis metadata
+│   └── *.png                                  # Visualizations
 └── README.md
 ```
 
-## Requirements
-
-- fMRIPrep (Docker)
-- MATLAB + CONN Toolbox
-- Python: nilearn, matplotlib, pandas
-
 ## Usage
 
-1. **Download data**: `bash scripts/download_data.sh`
-2. **Preprocess**: `bash scripts/preprocess.sh`
-3. **Analyze connectivity**: `matlab -batch "connectivity('sub-01')"`
-4. **Generate plots**: `python scripts/visualize.py`
+```bash
+# Install dependencies
+pip install -r scripts/requirements.txt
 
-## Results Summary
+# Run rigorous connectivity analysis
+python scripts/depression_connectivity_analysis.py
 
-- **Connectivity map**: Z-scored correlation maps thresholded at p < 0.001
-- **Key connections**: ACC ↔ dmPFC, PCC, sgACC
-- **Clinical implications**: Results consistent with hyperconnectivity patterns in mood disorders
+# Generate visualizations
+python scripts/create_visualizations.py
+```
 
-| Region | Z-score | Clinical relevance |
-|--------|---------|-------------------|
-| dmPFC | 4.1 | Executive control |
-| PCC | 3.7 | Default mode network |
+## Statistical Rigor
 
-📄 **[Full Report](docs/Mini_Report.pdf)**
+**Proper ROI masking** - Only regions present in all subjects  
+**Background exclusion** - Background/white matter removed before statistics  
+**FDR multiple comparisons correction** - Benjamini-Hochberg procedure  
+**Effect size reporting** - Cohen's d computed after masking  
+**No double preprocessing** - All steps applied once in clean_img  
+**Participant tracking** - List of analyzed subjects saved  
+
+## Limitations
+
+- **Confound regression**: Limited to global signal + polynomial trends (motion parameters, aCompCor not available from raw data)
+- **Motion correction**: Basic preprocessing without framewise displacement thresholding or scrubbing
+- **Cross-sectional design**: Pre-treatment data only, no longitudinal follow-up
+- **Proof-of-concept scope**: Demonstrates methodology rather than clinical-grade preprocessing pipeline
 
 ## References
 
-- Philip, N.S. et al. (2018). Network mechanisms of clinical response to transcranial magnetic stimulation in posttraumatic stress disorder and major depressive disorder. *Biol Psychiatry*
-- Whitfield-Gabrieli, S. & Nieto-Castanon, A. (2012). CONN toolbox. *Brain Connectivity*
-- Esteban, O. et al. (2019). fMRIPrep: a robust preprocessing pipeline. *Nature Methods*
+- Bezmaternykh D.D. et al. (2021). Brain Networks Connectivity in Mild to Moderate Depression. *Neural Plasticity*
+- Benjamini, Y. & Hochberg, Y. (1995). Controlling the false discovery rate. *J R Stat Soc B*
+- Harvard-Oxford cortical and subcortical atlases (FSL)
 
 ---
 
 **License**: MIT  
-**Contact**: [Your name] | [Email] | Completed as part of neuroimaging portfolio development
+**Contact**: Neuroimaging portfolio demonstrating statistical rigor for Stanford BSL application
