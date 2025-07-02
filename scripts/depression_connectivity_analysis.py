@@ -77,6 +77,42 @@ def find_valid_subjects(data_dir, min_subjects=10):
     
     return valid_subjects
 
+def create_common_roi_mask(connectivity_results, atlas_cortical, atlas_subcortical):
+    """Create mask of ROIs present in ALL subjects"""
+    
+    total_atlas_regions = len(atlas_cortical.labels) + len(atlas_subcortical.labels)
+    all_labels = list(atlas_cortical.labels) + list(atlas_subcortical.labels)
+    
+    # Count how many subjects have each ROI
+    roi_counts = np.zeros(total_atlas_regions)
+    
+    for result in connectivity_results:
+        n_regions = len(result['z_scores'])
+        roi_counts[:n_regions] += 1
+    
+    n_subjects = len(connectivity_results)
+    
+    # Keep only ROIs present in ALL subjects, excluding background
+    common_mask = roi_counts == n_subjects
+    
+    # Remove background if it exists
+    if 'Background' in all_labels:
+        bg_idx = all_labels.index('Background')
+        common_mask[bg_idx] = False
+    
+    # Also remove any white matter labels
+    for i, label in enumerate(all_labels):
+        if 'White Matter' in label or 'white matter' in label:
+            common_mask[i] = False
+    
+    common_indices = np.where(common_mask)[0]
+    common_labels = [all_labels[i] for i in common_indices]
+    
+    print(f"Common ROIs across all subjects: {len(common_indices)} out of {total_atlas_regions}")
+    print(f"Excluded regions: {total_atlas_regions - len(common_indices)}")
+    
+    return common_indices, common_labels
+
 def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cortical, atlas_subcortical):
     func_file = data_dir / subject_id / "ses-pre" / "func" / f"{subject_id}_ses-pre_task-rest_bold.nii.gz"
     
@@ -90,7 +126,7 @@ def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cor
         confounds_df = extract_manual_confounds(func_file, tr)
         print(f"  Extracted {len(confounds_df.columns)} confound regressors")
         
-        # Clean functional data with confounds
+        # Clean functional data with confounds - do ALL preprocessing here once
         func_clean = image.clean_img(
             func_img,
             detrend=True,
@@ -102,7 +138,7 @@ def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cor
             ensure_finite=True
         )
         
-        # Extract ACC time series
+        # Extract ACC time series - NO additional preprocessing
         acc_masker = maskers.NiftiSpheresMasker(
             acc_coords,
             radius=6,
@@ -114,7 +150,7 @@ def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cor
         
         acc_time_series = acc_masker.fit_transform(func_clean)
         
-        # Extract cortical regions
+        # Extract cortical regions - NO additional preprocessing
         cortical_masker = maskers.NiftiLabelsMasker(
             atlas_cortical.maps,
             detrend=False,
@@ -125,7 +161,7 @@ def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cor
         
         cortical_time_series = cortical_masker.fit_transform(func_clean)
         
-        # Extract subcortical regions
+        # Extract subcortical regions - NO additional preprocessing
         subcortical_masker = maskers.NiftiLabelsMasker(
             atlas_subcortical.maps,
             detrend=False,
@@ -138,7 +174,6 @@ def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cor
         
         # Combine cortical and subcortical
         all_time_series = np.hstack([cortical_time_series, subcortical_time_series])
-        all_labels = list(atlas_cortical.labels) + list(atlas_subcortical.labels)
         
         # Compute correlations
         correlations = np.corrcoef(acc_time_series.T, all_time_series.T)[0, 1:]
@@ -151,10 +186,9 @@ def compute_subject_connectivity(subject_id, data_dir, tr, acc_coords, atlas_cor
             'subject': subject_id,
             'correlations': correlations,
             'z_scores': z_scores,
-            'region_labels': all_labels,
             'n_timepoints': func_clean.shape[-1],
-            'n_cortical': len(atlas_cortical.labels),
-            'n_subcortical': len(atlas_subcortical.labels)
+            'n_cortical': cortical_time_series.shape[1],
+            'n_subcortical': subcortical_time_series.shape[1]
         }
         
     except Exception as e:
@@ -207,30 +241,33 @@ def analyze_depression_acc_connectivity():
     
     return connectivity_results, atlas_cortical, atlas_subcortical, tr, participants_df
 
-def statistical_analysis_with_fdr(connectivity_results):
-    """Statistical analysis with proper multiple comparisons correction"""
+def statistical_analysis_with_proper_masking(connectivity_results, atlas_cortical, atlas_subcortical):
+    """Statistical analysis with proper ROI masking and background removal"""
     
-    print("\nPerforming statistical analysis...")
+    print("\nPerforming statistical analysis with proper masking...")
     
-    # Find minimum number of regions across subjects
-    min_regions = min(len(subj['z_scores']) for subj in connectivity_results)
-    print(f"Using {min_regions} regions common to all subjects")
+    # Create mask of ROIs present in ALL subjects (excluding background/WM)
+    common_indices, common_labels = create_common_roi_mask(
+        connectivity_results, atlas_cortical, atlas_subcortical
+    )
     
-    # Collect z-scores for subjects with consistent regions
+    # Extract z-scores for common ROIs only
     valid_z_scores = []
     valid_subjects = []
     
     for subj in connectivity_results:
-        if len(subj['z_scores']) >= min_regions:
-            valid_z_scores.append(subj['z_scores'][:min_regions])
-            valid_subjects.append(subj['subject'])
+        # Take only the common ROIs for this subject
+        subj_z_scores = np.array(subj['z_scores'])[common_indices]
+        valid_z_scores.append(subj_z_scores)
+        valid_subjects.append(subj['subject'])
     
     all_z_scores = np.array(valid_z_scores)
-    n_subjects = len(all_z_scores)
+    n_subjects, n_regions = all_z_scores.shape
     
-    print(f"Final analysis: {n_subjects} subjects × {min_regions} regions")
+    print(f"Final analysis: {n_subjects} subjects × {n_regions} regions")
+    print(f"Regions analyzed: {common_labels}")
     
-    # Compute group statistics
+    # Compute group statistics AFTER proper masking
     mean_z_scores = np.mean(all_z_scores, axis=0)
     sem_z_scores = stats.sem(all_z_scores, axis=0)
     std_z_scores = np.std(all_z_scores, axis=0, ddof=1)
@@ -238,30 +275,19 @@ def statistical_analysis_with_fdr(connectivity_results):
     # One-sample t-tests against zero
     t_stats, p_values = stats.ttest_1samp(all_z_scores, 0, axis=0)
     
-    # Multiple comparisons correction using FDR
+    # Multiple comparisons correction using FDR (corrected n_tests)
     rejected, p_corrected = fdrcorrection(p_values, alpha=0.05, method='indep')
     
-    # Effect sizes (Cohen's d)
+    # Effect sizes (Cohen's d) - computed AFTER masking
     cohens_d = mean_z_scores / std_z_scores
     
     print(f"Uncorrected significant: {np.sum(p_values < 0.05)}")
     print(f"FDR-corrected significant: {np.sum(rejected)}")
-    
-    # Get region labels from first subject, excluding background
-    region_labels = connectivity_results[0]['region_labels'][:min_regions]
-    
-    # Remove background region (typically first region, label 0)
-    if 'Background' in region_labels:
-        bg_idx = region_labels.index('Background')
-        # Remove background from all data
-        all_z_scores = np.delete(all_z_scores, bg_idx, axis=1)
-        region_labels = [label for i, label in enumerate(region_labels) if i != bg_idx]
-        min_regions -= 1
-        print(f"Removed background region, using {min_regions} regions")
+    print(f"Total tests performed: {n_regions}")
     
     results = []
     for i, (region, mean_z, sem_z, std_z, t_stat, p_val, p_corr, significant, cohens_d_val) in enumerate(
-        zip(region_labels, mean_z_scores, sem_z_scores, std_z_scores, 
+        zip(common_labels, mean_z_scores, sem_z_scores, std_z_scores, 
             t_stats, p_values, p_corrected, rejected, cohens_d)
     ):
         results.append({
@@ -280,32 +306,51 @@ def statistical_analysis_with_fdr(connectivity_results):
     results_df = pd.DataFrame(results)
     results_df = results_df.sort_values('p_fdr_corrected')
     
-    return results_df
+    # Save list of subjects used
+    subjects_used = pd.DataFrame({'subject_id': valid_subjects})
+    subjects_used.to_csv('results/participants_used.tsv', sep='\t', index=False)
+    print(f"Saved participant list: results/participants_used.tsv")
+    
+    return results_df, n_regions
 
-def save_rigorous_results(connectivity_results, statistical_results, tr):
+def save_rigorous_results(connectivity_results, statistical_results, n_regions_analyzed, tr):
     results_dir = Path("results")
+    
+    # Get actual atlas coverage from results
+    n_subjects = len(connectivity_results)
+    example_result = connectivity_results[0]
+    n_cortical_actual = example_result['n_cortical'] 
+    n_subcortical_actual = example_result['n_subcortical']
     
     analysis_summary = {
         'dataset': 'ds003007 - Depression resting-state connectivity',
-        'n_subjects': len(connectivity_results),
+        'n_subjects': n_subjects,
         'tr': tr,
         'seed_region': 'Dorsal Anterior Cingulate Cortex',
         'seed_coords': [0, 24, 26],
         'seed_radius_mm': 6,
         'atlases': ['Harvard-Oxford cortical', 'Harvard-Oxford subcortical'],
+        'atlas_coverage': {
+            'cortical_regions': n_cortical_actual,
+            'subcortical_regions': n_subcortical_actual,
+            'total_available': n_cortical_actual + n_subcortical_actual,
+            'analyzed_after_masking': n_regions_analyzed
+        },
         'preprocessing': {
             'confound_regressors': ['global_signal', 'linear_trend', 'quadratic_trend'],
             'standardization': 'zscore_sample',
             'temporal_filter': {'low_pass': 0.1, 'high_pass': 0.01},
-            'detrending': True
+            'detrending': True,
+            'note': 'Motion parameters, WM, CSF not available (raw data, not fMRIPrep derivatives)'
         },
         'statistics': {
             'test': 'one-sample t-test vs zero',
             'multiple_comparisons': 'FDR correction (Benjamini-Hochberg)',
             'alpha': 0.05,
-            'n_tests': len(statistical_results),
+            'n_tests': n_regions_analyzed,
             'n_significant_uncorrected': int((statistical_results['p_value'] < 0.05).sum()),
-            'n_significant_fdr': int(statistical_results['significant_fdr'].sum())
+            'n_significant_fdr': int(statistical_results['significant_fdr'].sum()),
+            'masking': 'Only ROIs present in all subjects included'
         }
     }
     
@@ -328,12 +373,15 @@ if __name__ == "__main__":
     connectivity_results, atlas_cortical, atlas_subcortical, tr, participants_df = analyze_depression_acc_connectivity()
     
     if len(connectivity_results) >= 5:
-        statistical_results = statistical_analysis_with_fdr(connectivity_results)
-        results_dir = save_rigorous_results(connectivity_results, statistical_results, tr)
+        statistical_results, n_regions_analyzed = statistical_analysis_with_proper_masking(
+            connectivity_results, atlas_cortical, atlas_subcortical
+        )
+        results_dir = save_rigorous_results(connectivity_results, statistical_results, n_regions_analyzed, tr)
         
         print(f"\nRigorous analysis complete!")
         print(f"Results saved to: {results_dir}")
         print(f"Sample size: {len(connectivity_results)} subjects")
+        print(f"Regions analyzed: {n_regions_analyzed}")
         print(f"FDR-corrected significant connections: {statistical_results['significant_fdr'].sum()}")
         
         # Show top results
