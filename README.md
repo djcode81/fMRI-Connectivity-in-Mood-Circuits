@@ -4,7 +4,7 @@
 
 ## Overview
 
-This project demonstrates a methodologically rigorous neuroimaging analysis pipeline examining dorsal anterior cingulate cortex (dACC) functional connectivity patterns in mild depression. The analysis employs proper statistical methods with FDR correction and directly relates to neurostimulation targeting strategies used in treatment-resistant depression research.
+This project demonstrates a neuroimaging analysis pipeline examining dorsal anterior cingulate cortex (dACC) functional connectivity patterns in mild depression. The analysis employs proper statistical methods with FDR correction and directly relates to neurostimulation targeting strategies used in treatment-resistant depression research.
 
 ## Dataset
 
