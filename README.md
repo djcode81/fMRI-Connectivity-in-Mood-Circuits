@@ -100,4 +100,3 @@ python scripts/create_visualizations.py
 ---
 
 **License**: MIT  
-**Contact**: Neuroimaging portfolio demonstrating statistical rigor for Stanford BSL application
